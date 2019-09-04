@@ -105,7 +105,7 @@ func resourceFileCreateOrUpdate(s string, d *schema.ResourceData, m interface{})
 		Email:                       c.githubEmail,
 		Changes:                     entries,
 		RetryCount:                  1,
-		PullRequestSourceBranchName: fmt.Sprintf("terraform-provider-github-file-%d", time.Now().UnixNano()),
+		PullRequestSourceBranchName: fmt.Sprintf("terraform-provider-githubfile-%d", time.Now().UnixNano()),
 		PullRequestBody:             "",
 	}); err != nil {
 		return fmt.Errorf("failed to create commit: %v", err)
@@ -156,7 +156,7 @@ func resourceFileDelete(d *schema.ResourceData, m interface{}) error {
 		Email:                       c.githubEmail,
 		Changes:                     newTree,
 		BaseTreeOverride:            github.String(""),
-		PullRequestSourceBranchName: fmt.Sprintf("terraform-provider-github-file-%d", time.Now().UnixNano()),
+		PullRequestSourceBranchName: fmt.Sprintf("terraform-provider-githubfile-%d", time.Now().UnixNano()),
 		PullRequestBody:             "",
 	}); err != nil {
 		return fmt.Errorf("failed to create commit: %v", err)

@@ -28,7 +28,7 @@ const (
 	testAccFileCreate = `
 resource "githubfile_file" "foo" {
     repository_owner = "form3tech-oss"
-    repository_name  = "terraform-provider-github-file-test"
+    repository_name  = "terraform-provider-githubfile-test"
 	branch           = "master"
 	path             = "foo/bar/baz/README.md"
 	contents         = "foo\nbar\nbaz"
@@ -37,7 +37,7 @@ resource "githubfile_file" "foo" {
 	testAccFileUpdate = `
 resource "githubfile_file" "foo" {
     repository_owner = "form3tech-oss"
-    repository_name  = "terraform-provider-github-file-test"
+    repository_name  = "terraform-provider-githubfile-test"
 	branch           = "master"
 	path             = "foo/bar/baz/README.md"
 	contents         = "foo\nbar\nqux"
@@ -64,7 +64,7 @@ func TestAccResourceFile_basic(t *testing.T) {
 				Config: testAccFileCreate,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckFileExists(resourceName, &before),
-					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-github-file-test"),
+					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-githubfile-test"),
 					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, "form3tech-oss"),
 					resource.TestCheckResourceAttr(resourceName, branchAttributeName, "master"),
 					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/baz/README.md"),
@@ -80,7 +80,7 @@ func TestAccResourceFile_basic(t *testing.T) {
 				Config: testAccFileUpdate,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckFileExists(resourceName, &before),
-					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-github-file-test"),
+					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-githubfile-test"),
 					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, "form3tech-oss"),
 					resource.TestCheckResourceAttr(resourceName, branchAttributeName, "master"),
 					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/baz/README.md"),

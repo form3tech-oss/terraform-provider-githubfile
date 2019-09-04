@@ -1,4 +1,4 @@
-module github.com/form3tech-oss/terraform-provider-github-file
+module github.com/form3tech-oss/terraform-provider-githubfile
 
 go 1.12
 
