@@ -1,7 +1,7 @@
 archives:
 - format: zip
 builds:
-- binary: terraform-provider-github-file_v{{.Version}}
+- binary: terraform-provider-githubfile_v{{.Version}}
   env:
   - CGO_ENABLED=0
   goarch:
