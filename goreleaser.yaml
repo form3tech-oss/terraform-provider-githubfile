@@ -1,0 +1,19 @@
+archives:
+- format: zip
+builds:
+- binary: terraform-provider-github-file_v{{.Version}}
+  env:
+  - CGO_ENABLED=0
+  goarch:
+  - amd64
+  goos:
+  - darwin
+  - linux
+  - windows
+changelog:
+  filters:
+    exclude:
+    - "^Merge pull request"
+    - "^Merge branch"
+env:
+- GO111MODULE=on
