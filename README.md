@@ -1,5 +1,7 @@
 # terraform-provider-github-file
 
+[![Build Status](https://travis-ci.com/form3tech-oss/terraform-provider-githubfile.svg?branch=master)](https://travis-ci.com/form3tech-oss/terraform-provider-githubfile)
+
 A Terraform provider for managing files in GitHub repositories.
 
 ## Installation
