@@ -30,19 +30,21 @@ const (
 )
 
 const (
-	githubEmailKey    = "github_email"
-	githubTokenKey    = "github_token"
-	githubUsernameKey = "github_username"
-	gpgPassphraseKey  = "gpg_passphrase"
-	gpgSecretKeyKey   = "gpg_secret_key"
+	commitMessagePrefixKey = "commit_message_prefix"
+	githubEmailKey         = "github_email"
+	githubTokenKey         = "github_token"
+	githubUsernameKey      = "github_username"
+	gpgPassphraseKey       = "gpg_passphrase"
+	gpgSecretKeyKey        = "gpg_secret_key"
 )
 
 type providerConfiguration struct {
-	githubClient   *github.Client
-	githubEmail    string
-	githubUsername string
-	gpgPassphrase  string
-	gpgSecretKey   string
+	commitMessagePrefix string
+	githubClient        *github.Client
+	githubEmail         string
+	githubUsername      string
+	gpgPassphrase       string
+	gpgSecretKey        string
 }
 
 func Provider() *schema.Provider {
@@ -60,17 +62,25 @@ func Provider() *schema.Provider {
 				sk = string(v)
 			}
 			return &providerConfiguration{
-				githubClient:   github.NewClient(tc),
-				githubEmail:    d.Get(githubEmailKey).(string),
-				githubUsername: d.Get(githubUsernameKey).(string),
-				gpgSecretKey:   sk,
-				gpgPassphrase:  d.Get(gpgPassphraseKey).(string),
+				commitMessagePrefix: d.Get(commitMessagePrefixKey).(string),
+				githubClient:        github.NewClient(tc),
+				githubEmail:         d.Get(githubEmailKey).(string),
+				githubUsername:      d.Get(githubUsernameKey).(string),
+				gpgSecretKey:        sk,
+				gpgPassphrase:       d.Get(gpgPassphraseKey).(string),
 			}, nil
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			resourceFileName: resourceFile(),
 		},
 		Schema: map[string]*schema.Schema{
+			commitMessagePrefixKey: {
+				Type:        schema.TypeString,
+				DefaultFunc: defaultFuncForKey(commitMessagePrefixKey),
+				Optional:    true,
+				Sensitive:   false,
+				Description: "An optional prefix to be added to all commits created as a result of manipulating files.",
+			},
 			githubEmailKey: {
 				Type:        schema.TypeString,
 				DefaultFunc: defaultFuncForKey(githubEmailKey),

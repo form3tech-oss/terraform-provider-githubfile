@@ -20,6 +20,7 @@ The following provider block variables are available for configuration:
 
 | Name | Description |
 | ---- | ----------- |
+| `commit_message_prefix` | An optional prefix to be added to all commits generated as a result of manipulating files. |
 | `github_email` | The email address to use for commit messages.<br>If a GPG key is provided, this must match the one which the key corresponds to. |
 | `github_token` | A GitHub authorisation token with `repo` permissions and having `admin` access to the target repositories. |
 | `github_username` | The username to use for commit messages. |
