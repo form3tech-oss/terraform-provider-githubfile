@@ -17,6 +17,7 @@ package githubfile
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/form3tech-oss/go-github-utils/pkg/branch"
@@ -98,7 +99,7 @@ func resourceFileCreateOrUpdate(s string, d *schema.ResourceData, m interface{})
 	if err := commit.CreateCommit(context.Background(), c.githubClient, &commit.CommitOptions{
 		RepoOwner:                   f.repositoryOwner,
 		RepoName:                    f.repositoryName,
-		CommitMessage:               fmt.Sprintf(s, f.path),
+		CommitMessage:               formatCommitMessage(c.commitMessagePrefix, s, f.path),
 		GpgPassphrase:               c.gpgPassphrase,
 		GpgPrivateKey:               c.gpgSecretKey,
 		Username:                    c.githubUsername,
@@ -150,7 +151,7 @@ func resourceFileDelete(d *schema.ResourceData, m interface{}) error {
 	if err := commit.CreateCommit(context.Background(), c.githubClient, &commit.CommitOptions{
 		RepoOwner:                   f.repositoryOwner,
 		RepoName:                    f.repositoryName,
-		CommitMessage:               fmt.Sprintf("Delete %q.", f.path),
+		CommitMessage:               formatCommitMessage(c.commitMessagePrefix, "Delete %q.", f.path),
 		GpgPassphrase:               c.gpgPassphrase,
 		GpgPrivateKey:               c.gpgSecretKey,
 		Username:                    c.githubUsername,
@@ -193,4 +194,11 @@ func resourceFileRead(d *schema.ResourceData, m interface{}) error {
 
 func resourceFileUpdate(d *schema.ResourceData, m interface{}) error {
 	return resourceFileCreateOrUpdate("Update %q.", d, m)
+}
+
+func formatCommitMessage(p, m string, args ...interface{}) string {
+	if p == "" {
+		return fmt.Sprintf(m, args...)
+	}
+	return fmt.Sprintf(strings.TrimSpace(p)+" "+m, args...)
 }
