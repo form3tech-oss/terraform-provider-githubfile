@@ -1,8 +1,6 @@
 module github.com/form3tech-oss/terraform-provider-githubfile
 
-go 1.12
-
-replace git.apache.org/thrift.git => github.com/apache/thrift v0.12.0
+go 1.15
 
 require (
 	cloud.google.com/go v0.44.3 // indirect

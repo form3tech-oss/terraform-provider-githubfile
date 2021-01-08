@@ -159,6 +159,7 @@ func resourceFileDelete(d *schema.ResourceData, m interface{}) error {
 		Changes:                     newTree,
 		BaseTreeOverride:            github.String(""),
 		PullRequestSourceBranchName: fmt.Sprintf("terraform-provider-githubfile-%d", time.Now().UnixNano()),
+		Branch:                      f.branch,
 		PullRequestBody:             "",
 		MaxRetries:                  3,
 		RetryBackoff:                5 * time.Second,
