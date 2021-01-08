@@ -43,6 +43,15 @@ resource "githubfile_file" "foo" {
 	contents         = "foo\nbar\nqux"
 }
 `
+	testAccFileUpdatueNewBranch = `
+resource "githubfile_file" "foo" {
+    repository_owner = "form3tech-oss"
+    repository_name  = "terraform-provider-githubfile-test"
+	branch           = "main"
+	path             = "foo/bar/baz/README.md"
+	contents         = "foo\nbar\nqux"
+}
+`
 )
 
 func TestAccResourceFile_basic(t *testing.T) {
@@ -83,6 +92,16 @@ func TestAccResourceFile_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-githubfile-test"),
 					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, "form3tech-oss"),
 					resource.TestCheckResourceAttr(resourceName, branchAttributeName, "master"),
+					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/baz/README.md"),
+					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nqux"),
+				),
+			},
+			{
+				Config: testAccFileUpdatueNewBranch,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-githubfile-test"),
+					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, "form3tech-oss"),
+					resource.TestCheckResourceAttr(resourceName, branchAttributeName, "main"),
 					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/baz/README.md"),
 					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nqux"),
 				),
