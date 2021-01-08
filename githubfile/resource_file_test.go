@@ -43,13 +43,22 @@ resource "githubfile_file" "foo" {
 	contents         = "foo\nbar\nqux"
 }
 `
+	testAccFileUpdatueOldBranch= `
+resource "githubfile_file" "bar" {
+    repository_owner = "form3tech-oss"
+    repository_name  = "terraform-provider-githubfile-test"
+	branch           = "master"
+	path             = "foo/bar/test/README.md"
+	contents         = "foo\nbar\nqux"
+}
+`
 	testAccFileUpdatueNewBranch = `
-resource "githubfile_file" "foo" {
+resource "githubfile_file" "bar" {
     repository_owner = "form3tech-oss"
     repository_name  = "terraform-provider-githubfile-test"
 	branch           = "main"
-	path             = "foo/bar/baz/README.md"
-	contents         = "foo\nbar\nqux"
+	path             = "foo/bar/test/README.md"
+	contents         = "foo\nbar\baz"
 }
 `
 )
@@ -96,19 +105,56 @@ func TestAccResourceFile_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nqux"),
 				),
 			},
+		},
+	})
+}
+
+func TestAccResourceFile_update_cross_branch(t *testing.T) {
+	var (
+		before file
+	)
+
+	resourceName := "githubfile_file.bar"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			testAccPreCheck(t)
+		},
+		IDRefreshName: resourceName,
+		Providers:     testAccProviders,
+		CheckDestroy:  testAccCheckFileDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccFileUpdatueOldBranch,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckFileExists(resourceName, &before),
+					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-githubfile-test"),
+					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, "form3tech-oss"),
+					resource.TestCheckResourceAttr(resourceName, branchAttributeName, "master"),
+					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/test/README.md"),
+					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nqux"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 			{
 				Config: testAccFileUpdatueNewBranch,
 				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckFileExists(resourceName, &before),
 					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-githubfile-test"),
 					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, "form3tech-oss"),
 					resource.TestCheckResourceAttr(resourceName, branchAttributeName, "main"),
-					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/baz/README.md"),
-					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nqux"),
+					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/test/README.md"),
+					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nbaz"),
 				),
 			},
 		},
 	})
 }
+
 
 func testAccCheckFileExists(resourceName string, f *file) resource.TestCheckFunc {
 	return func(state *terraform.State) error {
