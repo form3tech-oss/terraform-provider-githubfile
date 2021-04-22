@@ -73,7 +73,7 @@ Creating the resource above will result in the `.github/ISSUE_TEMPLATE.md` file 
 ```markdown
 # Issue Type
 
-- [ ] Bug report.
+- [x] Bug report.
 - [ ] Suggestion.
 
 # Description
