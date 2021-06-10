@@ -9,6 +9,7 @@ cache:
   - $GOPATH/pkg/mod
   - $HOME/.cache/go-build
 script:
+- echo 1
 - make
 deploy:
 - provider: script
