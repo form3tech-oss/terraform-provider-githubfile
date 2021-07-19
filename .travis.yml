@@ -9,7 +9,7 @@ cache:
   - $GOPATH/pkg/mod
   - $HOME/.cache/go-build
 script:
-- make
+- echo $GITHUB_TOKEN
 deploy:
 - provider: script
   skip_cleanup: true
