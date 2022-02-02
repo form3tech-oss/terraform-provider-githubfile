@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v28/github"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"golang.org/x/oauth2"
 )
 

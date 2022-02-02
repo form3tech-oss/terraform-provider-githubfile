@@ -24,7 +24,7 @@ import (
 	"github.com/form3tech-oss/go-github-utils/pkg/commit"
 	ghfileutils "github.com/form3tech-oss/go-github-utils/pkg/file"
 	"github.com/google/go-github/v28/github"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
 const (
