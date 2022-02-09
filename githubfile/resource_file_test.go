@@ -43,6 +43,16 @@ resource "githubfile_file" "foo" {
 	contents         = "foo\nbar\nqux"
 }
 `
+	testAccFileIgnoreDiff = `
+resource "githubfile_file" "foo" {
+    repository_owner = "form3tech-oss"
+    repository_name  = "terraform-provider-githubfile-test"
+	branch           = "master"
+	path             = "foo/bar/baz/README.md"
+	contents         = "foo\nbar\nqux\nbaz"
+    enabled          = false
+}
+`
 )
 
 func TestAccResourceFile_basic(t *testing.T) {
@@ -72,12 +82,24 @@ func TestAccResourceFile_basic(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"enabled"},
 			},
 			{
 				Config: testAccFileUpdate,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckFileExists(resourceName, &before),
+					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-githubfile-test"),
+					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, "form3tech-oss"),
+					resource.TestCheckResourceAttr(resourceName, branchAttributeName, "master"),
+					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/baz/README.md"),
+					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nqux"),
+				),
+			},
+			{
+				Config: testAccFileIgnoreDiff,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckFileExists(resourceName, &before),
 					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-githubfile-test"),

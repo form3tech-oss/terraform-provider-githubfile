@@ -33,6 +33,7 @@ const (
 	pathAttributeName            = "path"
 	repositoryNameAttributeName  = "repository_name"
 	repositoryOwnerAttributeName = "repository_owner"
+	enabledAttributeName         = "enabled"
 )
 
 func resourceFile() *schema.Resource {
@@ -46,37 +47,52 @@ func resourceFile() *schema.Resource {
 		},
 		Schema: map[string]*schema.Schema{
 			repositoryNameAttributeName: {
-				Type:        schema.TypeString,
-				Required:    true,
-				ForceNew:    true,
-				Description: "The name of the repository in which to create the file.",
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				Description:      "The name of the repository in which to create the file.",
+				DiffSuppressFunc: suppressDisabledResources,
 			},
 			repositoryOwnerAttributeName: {
-				Type:        schema.TypeString,
-				Required:    true,
-				ForceNew:    true,
-				Description: "The owner of the repository in which to create the file.",
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				Description:      "The owner of the repository in which to create the file.",
+				DiffSuppressFunc: suppressDisabledResources,
 			},
 			branchAttributeName: {
-				Type:        schema.TypeString,
-				Required:    true,
-				ForceNew:    true,
-				Description: "The branch in which to create the file.",
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				Description:      "The branch in which to create the file.",
+				DiffSuppressFunc: suppressDisabledResources,
 			},
 			pathAttributeName: {
-				Type:        schema.TypeString,
-				Required:    true,
-				ForceNew:    true,
-				Description: "The path in which to create the file.",
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				Description:      "The path in which to create the file.",
+				DiffSuppressFunc: suppressDisabledResources,
 			},
 			contentsAttributeName: {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "The contents of the file.",
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "The contents of the file.",
+				DiffSuppressFunc: suppressDisabledResources,
+			},
+			enabledAttributeName: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "If false, the file will not be read or modified. This is useful for archived repositories which can not be mutated (deleted or updated)",
 			},
 		},
 		SchemaVersion: 0,
 	}
+}
+
+func suppressDisabledResources(k, old, new string, d *schema.ResourceData) bool {
+	return !d.Get(enabledAttributeName).(bool)
 }
 
 func resourceFileCreate(d *schema.ResourceData, m interface{}) error {

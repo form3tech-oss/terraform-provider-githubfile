@@ -27,6 +27,7 @@ type file struct {
 	branch          string
 	path            string
 	contents        string
+	enabled         bool
 }
 
 func expandFile(d *schema.ResourceData) *file {
@@ -44,6 +45,7 @@ func expandFile(d *schema.ResourceData) *file {
 		}
 	}
 	f.contents = d.Get(contentsAttributeName).(string)
+	f.enabled = d.Get(enabledAttributeName).(bool)
 	return f
 }
 
@@ -61,6 +63,9 @@ func flattenFile(f *file, d *schema.ResourceData) error {
 		return err
 	}
 	if err := d.Set(contentsAttributeName, f.contents); err != nil {
+		return err
+	}
+	if err := d.Set(enabledAttributeName, f.enabled); err != nil {
 		return err
 	}
 	d.SetId(fmt.Sprintf("%s/%s:%s:%s", f.repositoryOwner, f.repositoryName, f.branch, f.path))
