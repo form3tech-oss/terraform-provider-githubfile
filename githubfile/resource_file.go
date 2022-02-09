@@ -23,8 +23,8 @@ import (
 	"github.com/form3tech-oss/go-github-utils/pkg/branch"
 	"github.com/form3tech-oss/go-github-utils/pkg/commit"
 	ghfileutils "github.com/form3tech-oss/go-github-utils/pkg/file"
-	"github.com/google/go-github/v28/github"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/google/go-github/v42/github"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
 const (
@@ -88,7 +88,7 @@ func resourceFileCreateOrUpdate(s string, d *schema.ResourceData, m interface{})
 	f := expandFile(d)
 
 	// Create a commit having the target file's new/updated contents as the single change.
-	entries := []github.TreeEntry{
+	entries := []*github.TreeEntry{
 		{
 			Content: github.String(f.contents),
 			Mode:    github.String("100644"),
@@ -140,7 +140,7 @@ func resourceFileDelete(d *schema.ResourceData, m interface{}) error {
 
 	// Remove the target file from the list of entries for the new tree.
 	// NOTE: Entries of type "tree" must be removed as well, otherwise deletion won't take place.
-	newTree := make([]github.TreeEntry, 0, len(oldTree.Entries))
+	newTree := make([]*github.TreeEntry, 0, len(oldTree.Entries))
 	for _, entry := range oldTree.Entries {
 		if *entry.Type != "tree" && *entry.Path != f.path {
 			newTree = append(newTree, entry)
