@@ -180,6 +180,10 @@ func resourceFileRead(d *schema.ResourceData, m interface{}) error {
 	f := expandFile(d)
 
 	h, err := ghfileutils.GetFile(context.Background(), c.githubClient, f.repositoryOwner, f.repositoryName, f.branch, f.path)
+	if err == ghfileutils.ErrNotFound {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return err
 	}
