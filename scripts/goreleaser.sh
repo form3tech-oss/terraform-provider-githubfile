@@ -27,4 +27,4 @@ download() {
 
 download
 tar -xf "$TAR_FILE" -C "$TMPDIR"
-"${TMPDIR}/goreleaser" --skip-validate --skip-publish "$@"
+"${TMPDIR}/goreleaser" "$@"
