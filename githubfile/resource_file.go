@@ -197,7 +197,11 @@ func resourceFileRead(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceFileUpdate(d *schema.ResourceData, m interface{}) error {
-	return resourceFileCreateOrUpdate("Update %q.", d, m)
+	if err := resourceFileCreateOrUpdate("Update %q.", d, m); err != nil {
+		d.SetId("")
+		return err
+	}
+	return nil
 }
 
 func formatCommitMessage(p, m string, args ...interface{}) string {
