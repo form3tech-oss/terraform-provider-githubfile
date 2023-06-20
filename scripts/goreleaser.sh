@@ -3,7 +3,7 @@ set -e
 
 TAR_FILE="/tmp/goreleaser.tar.gz"
 RELEASES_URL="https://github.com/goreleaser/goreleaser/releases"
-PINNED_VERSION="v0.173.2"
+PINNED_VERSION="v1.18.2"
 
 test -z "$TMPDIR" && TMPDIR="$(mktemp -d)"
 
@@ -27,4 +27,4 @@ download() {
 
 download
 tar -xf "$TAR_FILE" -C "$TMPDIR"
-"${TMPDIR}/goreleaser" "$@"
+"${TMPDIR}/goreleaser" --skip-validate --skip-publish "$@"
