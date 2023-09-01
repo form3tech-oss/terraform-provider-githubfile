@@ -23,7 +23,7 @@ import (
 	"github.com/form3tech-oss/go-github-utils/pkg/branch"
 	"github.com/form3tech-oss/go-github-utils/pkg/commit"
 	ghfileutils "github.com/form3tech-oss/go-github-utils/pkg/file"
-	"github.com/google/go-github/v42/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
