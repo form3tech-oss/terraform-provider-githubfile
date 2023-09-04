@@ -49,7 +49,8 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		ConfigureFunc: func(d *schema.ResourceData) (interface{}, error) {
 			c := tpg.Config{
-				Token: d.Get(githubTokenKey).(string),
+				Token:   d.Get(githubTokenKey).(string),
+				BaseURL: "https://api.github.com/",
 			}
 
 			gc, err := c.NewRESTClient(c.AuthenticatedHTTPClient())
