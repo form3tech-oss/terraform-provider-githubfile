@@ -15,14 +15,12 @@
 package githubfile
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
-	"strings"
-
-	"github.com/google/go-github/v42/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"golang.org/x/oauth2"
+	tpg "github.com/integrations/terraform-provider-github/v5/github"
+	"strings"
 )
 
 const (
@@ -50,12 +48,16 @@ type providerConfiguration struct {
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		ConfigureFunc: func(d *schema.ResourceData) (interface{}, error) {
-			ts := oauth2.StaticTokenSource(
-				&oauth2.Token{
-					AccessToken: d.Get(githubTokenKey).(string),
-				},
-			)
-			tc := oauth2.NewClient(context.Background(), ts)
+			c := tpg.Config{
+				Token:   d.Get(githubTokenKey).(string),
+				BaseURL: "https://api.github.com/",
+			}
+
+			gc, err := c.NewRESTClient(c.AuthenticatedHTTPClient())
+			if err != nil {
+				return nil, fmt.Errorf("failed to create GitHub Client: %v", err)
+			}
+
 			// Support reading a base64-encoded GPG secret key.
 			sk := d.Get(gpgSecretKeyKey).(string)
 			if v, err := base64.StdEncoding.DecodeString(sk); err == nil {
@@ -63,7 +65,7 @@ func Provider() *schema.Provider {
 			}
 			return &providerConfiguration{
 				commitMessagePrefix: d.Get(commitMessagePrefixKey).(string),
-				githubClient:        github.NewClient(tc),
+				githubClient:        gc,
 				githubEmail:         d.Get(githubEmailKey).(string),
 				githubUsername:      d.Get(githubUsernameKey).(string),
 				gpgSecretKey:        sk,
