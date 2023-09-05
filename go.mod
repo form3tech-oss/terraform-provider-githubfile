@@ -3,7 +3,7 @@ module github.com/form3tech-oss/terraform-provider-githubfile
 go 1.18
 
 require (
-	github.com/form3tech-oss/go-github-utils v0.0.0-20220202160928-550ce279ed0c
+	github.com/form3tech-oss/go-github-utils v0.0.0-20230904135919-8fc6a34927e8
 	github.com/google/go-github/v54 v54.0.0
 	github.com/hashicorp/terraform-plugin-sdk v1.17.2
 	github.com/integrations/terraform-provider-github/v5 v5.34.0
@@ -97,6 +97,3 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 )
-
-// TODO: Remove this, this is a temporary measure, pointing to branch which has required updates
-replace github.com/form3tech-oss/go-github-utils => github.com/form3tech-oss/go-github-utils v0.0.0-20230901091654-8d3a24cb49e0

@@ -271,8 +271,8 @@ github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5Kwzbycv
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
-github.com/form3tech-oss/go-github-utils v0.0.0-20230901091654-8d3a24cb49e0 h1:K1SZbG9nsGyIfVlhnbqS44o1hK3PL8d/3OeNHSN4OMU=
-github.com/form3tech-oss/go-github-utils v0.0.0-20230901091654-8d3a24cb49e0/go.mod h1:jQ25cGOTgqTNX+T0Da3t/LGkUL8yua9rVvycwNPlqrg=
+github.com/form3tech-oss/go-github-utils v0.0.0-20230904135919-8fc6a34927e8 h1:nZr5Thwgw81jWTTTfwPFr5827Gl9In01dvJM2m+pNrE=
+github.com/form3tech-oss/go-github-utils v0.0.0-20230904135919-8fc6a34927e8/go.mod h1:jQ25cGOTgqTNX+T0Da3t/LGkUL8yua9rVvycwNPlqrg=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/gliderlabs/ssh v0.2.2/go.mod h1:U7qILu1NlMHj9FlMhZLlkCdDnU1DBEAqr0aevW3Awn0=
 github.com/go-git/gcfg v1.5.0 h1:Q5ViNfGF8zFgyJWPqYwA7qGFoMTEiBmdlkcfRmpIMa4=
