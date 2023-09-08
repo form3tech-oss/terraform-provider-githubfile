@@ -6,6 +6,7 @@ A Terraform provider for managing files in GitHub repositories.
 
 ## Use-cases
 
+
 A few possible use-cases for `terraform-provider-githubfile` are:
 
 * Adding a `LICENSE` file to a number of repositories.
