@@ -120,7 +120,13 @@ func resourceFileDelete(d *schema.ResourceData, m interface{}) error {
 	f := expandFile(d)
 
 	// Check whether the file exists.
-	_, err := ghfileutils.GetFile(context.Background(), c.githubClient, f.repositoryOwner, f.repositoryName, f.branch, f.path)
+	fileContent, err := ghfileutils.GetFile(context.Background(),
+		c.githubClient,
+		f.repositoryOwner,
+		f.repositoryName,
+		f.branch,
+		f.path,
+	)
 	if err != nil {
 		if err == ghfileutils.ErrNotFound {
 			return nil
@@ -129,24 +135,21 @@ func resourceFileDelete(d *schema.ResourceData, m interface{}) error {
 	}
 
 	// Get the tree that corresponds to the target branch.
-	s, err := branch.GetSHAForBranch(context.Background(), c.githubClient, f.repositoryOwner, f.repositoryName, f.branch)
-	if err != nil {
-		return err
-	}
-	oldTree, _, err := c.githubClient.Git.GetTree(context.Background(), f.repositoryOwner, f.repositoryName, s, true)
+	s, err := branch.GetSHAForBranch(context.Background(),
+		c.githubClient,
+		f.repositoryOwner,
+		f.repositoryName,
+		f.branch)
 	if err != nil {
 		return err
 	}
 
-	// Remove the target file from the list of entries for the new tree.
-	// NOTE: Entries of type "tree" must be removed as well, otherwise deletion won't take place.
-	newTree := make([]*github.TreeEntry, 0, len(oldTree.Entries))
-	for _, entry := range oldTree.Entries {
-		if *entry.Type != "tree" && *entry.Path != f.path {
-			newTree = append(newTree, entry)
-		}
-	}
-
+	newTree := []*github.TreeEntry{{
+		SHA:  nil, // delete the file
+		Path: fileContent.Path,
+		Mode: github.String("100644"),
+		Type: github.String("blob"),
+	}}
 	// Create a commit based on the new tree.
 	if err := commit.CreateCommit(context.Background(), c.githubClient, &commit.CommitOptions{
 		RepoOwner:                   f.repositoryOwner,
@@ -157,12 +160,13 @@ func resourceFileDelete(d *schema.ResourceData, m interface{}) error {
 		Username:                    c.githubUsername,
 		Email:                       c.githubEmail,
 		Changes:                     newTree,
-		BaseTreeOverride:            github.String(""),
+		BaseTreeOverride:            &s,
 		PullRequestSourceBranchName: fmt.Sprintf("terraform-provider-githubfile-%d", time.Now().UnixNano()),
 		PullRequestBody:             "",
 		MaxRetries:                  3,
 		RetryBackoff:                5 * time.Second,
-	}); err != nil {
+	},
+	); err != nil {
 		return fmt.Errorf("failed to create commit: %v", err)
 	}
 	return nil
@@ -179,7 +183,12 @@ func resourceFileRead(d *schema.ResourceData, m interface{}) error {
 	c := m.(*providerConfiguration)
 	f := expandFile(d)
 
-	h, err := ghfileutils.GetFile(context.Background(), c.githubClient, f.repositoryOwner, f.repositoryName, f.branch, f.path)
+	h, err := ghfileutils.GetFile(context.Background(),
+		c.githubClient,
+		f.repositoryOwner,
+		f.repositoryName,
+		f.branch,
+		f.path)
 	if err == ghfileutils.ErrNotFound {
 		d.SetId("")
 		return nil
