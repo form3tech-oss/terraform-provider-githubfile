@@ -19,6 +19,7 @@ A few possible use-cases for `terraform-provider-githubfile` are:
 Download the relevant binary from [releases](https://github.com/form3tech-oss/terraform-provider-github-file/releases) and copy it to `$HOME/.terraform.d/plugins/`.
 
 ## Configuration
+Test
 
 The following provider block variables are available for configuration:
 
