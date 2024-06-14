@@ -99,6 +99,7 @@ func resourceFileCreateOrUpdate(s string, d *schema.ResourceData, m interface{})
 	if err := commit.CreateCommit(context.Background(), c.githubClient, &commit.CommitOptions{
 		RepoOwner:                   f.repositoryOwner,
 		RepoName:                    f.repositoryName,
+		Branch:                      f.branch,
 		CommitMessage:               formatCommitMessage(c.commitMessagePrefix, s, f.path),
 		GpgPassphrase:               c.gpgPassphrase,
 		GpgPrivateKey:               c.gpgSecretKey,
