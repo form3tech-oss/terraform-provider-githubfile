@@ -1,6 +1,6 @@
 module github.com/form3tech-oss/terraform-provider-githubfile
 
-go 1.18
+go 1.25
 
 require (
 	github.com/form3tech-oss/go-github-utils v0.0.0-20230904135919-8fc6a34927e8
