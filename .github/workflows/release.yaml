@@ -7,7 +7,7 @@ on:
 
 jobs:
   tag-release:
-    uses: form3tech/tfe-providers-gh-workflows/.github/workflows/release.yml@v0.2.5
+    uses: form3tech/tfe-providers-gh-workflows/.github/workflows/release.yml@v0.2.10
     secrets: inherit
     permissions:
       id-token: write

@@ -17,33 +17,102 @@ package githubfile
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"os"
 	"testing"
 
+	"github.com/form3tech-oss/go-github-utils/pkg/branch"
 	ghfileutils "github.com/form3tech-oss/go-github-utils/pkg/file"
+	"github.com/google/go-github/v54/github"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"golang.org/x/oauth2"
 )
 
 const (
-	testAccFileCreate = `
-resource "githubfile_file" "foo" {
-    repository_owner = "form3tech-oss"
-    repository_name  = "terraform-provider-githubfile-test"
-	branch           = "master"
-	path             = "foo/bar/baz/README.md"
-	contents         = "foo\nbar\nbaz"
-}
-`
-	testAccFileUpdate = `
-resource "githubfile_file" "foo" {
-    repository_owner = "form3tech-oss"
-    repository_name  = "terraform-provider-githubfile-test"
-	branch           = "master"
-	path             = "foo/bar/baz/README.md"
-	contents         = "foo\nbar\nqux"
-}
-`
+	testRepoOwner = "form3tech-oss"
+	testRepoName  = "terraform-provider-githubfile"
 )
+
+var testBranchName string
+
+func newGitHubClient() *github.Client {
+	token := os.Getenv("GITHUB_TOKEN")
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tc := oauth2.NewClient(context.Background(), ts)
+	return github.NewClient(tc)
+}
+
+func TestMain(m *testing.M) {
+	testBranchName = fmt.Sprintf("acc-test-%d", rand.Int63())
+
+	code := m.Run()
+
+	// Cleanup: delete the test branch if it was created
+	if os.Getenv("GITHUB_TOKEN") != "" {
+		cleanupTestBranch()
+	}
+
+	os.Exit(code)
+}
+
+func cleanupTestBranch() {
+	client := newGitHubClient()
+	ref := fmt.Sprintf("refs/heads/%s", testBranchName)
+	_, err := client.Git.DeleteRef(context.Background(), testRepoOwner, testRepoName, ref)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to delete test branch %s: %v\n", testBranchName, err)
+	}
+}
+
+func createTestBranch(t *testing.T) {
+	t.Helper()
+
+	client := newGitHubClient()
+	ctx := context.Background()
+
+	// Get the SHA for the default branch (master)
+	sha, err := branch.GetSHAForBranch(ctx, client, testRepoOwner, testRepoName, "master")
+	if err != nil {
+		t.Fatalf("failed to get SHA for master branch: %v", err)
+	}
+
+	// Create the test branch
+	ref := &github.Reference{
+		Ref: github.String(fmt.Sprintf("refs/heads/%s", testBranchName)),
+		Object: &github.GitObject{
+			SHA: github.String(sha),
+		},
+	}
+	_, _, err = client.Git.CreateRef(ctx, testRepoOwner, testRepoName, ref)
+	if err != nil {
+		t.Fatalf("failed to create test branch %s: %v", testBranchName, err)
+	}
+}
+
+func testAccFileCreateConfig() string {
+	return fmt.Sprintf(`
+resource "githubfile_file" "foo" {
+    repository_owner = "%s"
+    repository_name  = "%s"
+    branch           = "%s"
+    path             = "foo/bar/baz/README.md"
+    contents         = "foo\nbar\nbaz"
+}
+`, testRepoOwner, testRepoName, testBranchName)
+}
+
+func testAccFileUpdateConfig() string {
+	return fmt.Sprintf(`
+resource "githubfile_file" "foo" {
+    repository_owner = "%s"
+    repository_name  = "%s"
+    branch           = "%s"
+    path             = "foo/bar/baz/README.md"
+    contents         = "foo\nbar\nqux"
+}
+`, testRepoOwner, testRepoName, testBranchName)
+}
 
 func TestAccResourceFile_basic(t *testing.T) {
 	var (
@@ -55,18 +124,19 @@ func TestAccResourceFile_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
+			createTestBranch(t)
 		},
 		IDRefreshName: resourceName,
 		Providers:     testAccProviders,
 		CheckDestroy:  testAccCheckFileDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccFileCreate,
+				Config: testAccFileCreateConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckFileExists(resourceName, &before),
-					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-githubfile-test"),
-					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, "form3tech-oss"),
-					resource.TestCheckResourceAttr(resourceName, branchAttributeName, "master"),
+					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, testRepoName),
+					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, testRepoOwner),
+					resource.TestCheckResourceAttr(resourceName, branchAttributeName, testBranchName),
 					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/baz/README.md"),
 					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nbaz"),
 				),
@@ -77,12 +147,12 @@ func TestAccResourceFile_basic(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: testAccFileUpdate,
+				Config: testAccFileUpdateConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckFileExists(resourceName, &before),
-					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, "terraform-provider-githubfile-test"),
-					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, "form3tech-oss"),
-					resource.TestCheckResourceAttr(resourceName, branchAttributeName, "master"),
+					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, testRepoName),
+					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, testRepoOwner),
+					resource.TestCheckResourceAttr(resourceName, branchAttributeName, testBranchName),
 					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/baz/README.md"),
 					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nqux"),
 				),

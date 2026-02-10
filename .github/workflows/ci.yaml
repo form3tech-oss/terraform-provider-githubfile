@@ -4,7 +4,8 @@ on: [pull_request]
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
+  pull-requests: write
 
 defaults:
   run:
@@ -16,11 +17,10 @@ concurrency:
 
 env:
   TF_ACC: 1
-  COMMIT_MESSAGE_PREFIX: "[foo]"
-  GITHUB_TOKEN: ${{ secrets.GH_TOKEN_TEAMAPPROVER_PAWEL_POLA }}
-  GITHUB_USERNAME: "pawel-pola-form3"
-  GITHUB_EMAIL: ${{ secrets.PAWEL_POLA_EMAIL_ADDRESS }}
-  GPG_SECRET_KEY: ${{ secrets.GPG_PRIVATE_SIGNING_KEY_PAWEL_POLA }}
+  COMMIT_MESSAGE_PREFIX: "[skip ci]"
+  GITHUB_TOKEN: ${{ github.token }}
+  GITHUB_USERNAME: "github-actions[bot]"
+  GITHUB_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com"
 
 jobs:
   tests:
