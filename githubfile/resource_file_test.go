@@ -18,6 +18,9 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 
@@ -25,6 +28,7 @@ import (
 	ghfileutils "github.com/form3tech-oss/go-github-utils/pkg/file"
 	"github.com/google/go-github/v54/github"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	"golang.org/x/oauth2"
 )
@@ -206,4 +210,83 @@ func testAccCheckFileDestroy(s *terraform.State) error {
 		}
 	}
 	return nil
+}
+
+// newTestResourceData creates a schema.ResourceData with the file resource schema
+// populated from the given raw values, suitable for unit testing.
+func newTestResourceData(t *testing.T, values map[string]interface{}) *schema.ResourceData {
+	t.Helper()
+	return schema.TestResourceDataRaw(t, resourceFile().Schema, values)
+}
+
+// newMockGitHubClient creates a github.Client pointing at the given httptest.Server.
+func newMockGitHubClient(server *httptest.Server) *github.Client {
+	client := github.NewClient(server.Client())
+	serverURL, _ := url.Parse(server.URL + "/")
+	client.BaseURL = serverURL
+	return client
+}
+
+func TestResourceFileDelete_ArchivedRepo(t *testing.T) {
+	// Set up a mock HTTP server that returns an archived repository
+	mux := http.NewServeMux()
+	mux.HandleFunc("/repos/test-owner/test-repo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"id":1,"name":"test-repo","full_name":"test-owner/test-repo","archived":true}`)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	config := &providerConfiguration{
+		githubClient: newMockGitHubClient(server),
+	}
+
+	d := newTestResourceData(t, map[string]interface{}{
+		repositoryOwnerAttributeName: "test-owner",
+		repositoryNameAttributeName:  "test-repo",
+		branchAttributeName:          "main",
+		pathAttributeName:            "some/file.txt",
+		contentsAttributeName:        "some content",
+	})
+	d.SetId("test-owner/test-repo:main:some/file.txt")
+
+	// Delete should succeed without error — archived repo skips deletion
+	err := resourceFileDelete(d, config)
+	if err != nil {
+		t.Fatalf("expected no error for archived repo deletion, got: %v", err)
+	}
+}
+
+func TestResourceFileDelete_NonArchivedRepo_FileNotFound(t *testing.T) {
+	// Set up a mock HTTP server that returns a non-archived repository
+	// and a 404 for the file content (file doesn't exist)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/repos/test-owner/test-repo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"id":1,"name":"test-repo","full_name":"test-owner/test-repo","archived":false}`)
+	})
+	mux.HandleFunc("/repos/test-owner/test-repo/contents/some/file.txt", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	config := &providerConfiguration{
+		githubClient: newMockGitHubClient(server),
+	}
+
+	d := newTestResourceData(t, map[string]interface{}{
+		repositoryOwnerAttributeName: "test-owner",
+		repositoryNameAttributeName:  "test-repo",
+		branchAttributeName:          "main",
+		pathAttributeName:            "some/file.txt",
+		contentsAttributeName:        "some content",
+	})
+	d.SetId("test-owner/test-repo:main:some/file.txt")
+
+	// Delete should succeed — file not found is treated as already deleted
+	err := resourceFileDelete(d, config)
+	if err != nil {
+		t.Fatalf("expected no error when file not found on non-archived repo, got: %v", err)
+	}
 }
