@@ -1,12 +1,13 @@
 module github.com/form3tech-oss/terraform-provider-githubfile
 
-go 1.18
+go 1.25
 
 require (
 	github.com/form3tech-oss/go-github-utils v0.0.0-20230904135919-8fc6a34927e8
 	github.com/google/go-github/v54 v54.0.0
 	github.com/hashicorp/terraform-plugin-sdk v1.17.2
 	github.com/integrations/terraform-provider-github/v5 v5.34.0
+	golang.org/x/oauth2 v0.11.0
 )
 
 require (
@@ -84,7 +85,6 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
-	golang.org/x/oauth2 v0.11.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect

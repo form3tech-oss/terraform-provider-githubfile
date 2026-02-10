@@ -17,6 +17,7 @@ package githubfile
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -99,6 +100,7 @@ func resourceFileCreateOrUpdate(s string, d *schema.ResourceData, m interface{})
 	if err := commit.CreateCommit(context.Background(), c.githubClient, &commit.CommitOptions{
 		RepoOwner:                   f.repositoryOwner,
 		RepoName:                    f.repositoryName,
+		Branch:                      f.branch,
 		CommitMessage:               formatCommitMessage(c.commitMessagePrefix, s, f.path),
 		GpgPassphrase:               c.gpgPassphrase,
 		GpgPrivateKey:               c.gpgSecretKey,
@@ -118,6 +120,18 @@ func resourceFileCreateOrUpdate(s string, d *schema.ResourceData, m interface{})
 func resourceFileDelete(d *schema.ResourceData, m interface{}) error {
 	c := m.(*providerConfiguration)
 	f := expandFile(d)
+
+	// Check if the repository is archived. If so, skip the delete operation
+	// and just remove the resource from state, since archived repositories
+	// cannot be modified.
+	repo, _, err := c.githubClient.Repositories.Get(context.Background(), f.repositoryOwner, f.repositoryName)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve repository %s/%s: %v", f.repositoryOwner, f.repositoryName, err)
+	}
+	if repo.GetArchived() {
+		log.Printf("[WARN] Repository %s/%s is archived, skipping file deletion and removing %q from state", f.repositoryOwner, f.repositoryName, f.path)
+		return nil
+	}
 
 	// Check whether the file exists.
 	fileContent, err := ghfileutils.GetFile(context.Background(),
@@ -154,6 +168,7 @@ func resourceFileDelete(d *schema.ResourceData, m interface{}) error {
 	if err := commit.CreateCommit(context.Background(), c.githubClient, &commit.CommitOptions{
 		RepoOwner:                   f.repositoryOwner,
 		RepoName:                    f.repositoryName,
+		Branch:                      f.branch,
 		CommitMessage:               formatCommitMessage(c.commitMessagePrefix, "Delete %q.", f.path),
 		GpgPassphrase:               c.gpgPassphrase,
 		GpgPrivateKey:               c.gpgSecretKey,
