@@ -7,13 +7,12 @@ require (
 	github.com/google/go-github/v54 v54.0.0
 	github.com/hashicorp/terraform-plugin-sdk v1.17.2
 	github.com/integrations/terraform-provider-github/v5 v5.34.0
-	golang.org/x/oauth2 v0.11.0
+	golang.org/x/oauth2 v0.27.0
 )
 
 require (
 	cloud.google.com/go v0.110.2 // indirect
-	cloud.google.com/go/compute v1.20.1 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	cloud.google.com/go/iam v0.13.0 // indirect
 	cloud.google.com/go/storage v1.29.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
