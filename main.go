@@ -15,15 +15,17 @@
 package main
 
 import (
+	"context"
+	"log"
+
 	"github.com/form3tech-oss/terraform-provider-githubfile/githubfile"
-	"github.com/hashicorp/terraform-plugin-sdk/plugin"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
 func main() {
-	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: func() terraform.ResourceProvider {
-			return githubfile.Provider()
-		},
-	})
+	if err := providerserver.Serve(context.Background(), githubfile.New, providerserver.ServeOpts{
+		Address: "registry.terraform.io/form3tech-oss/githubfile",
+	}); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -17,8 +17,6 @@ package githubfile
 import (
 	"fmt"
 	"strings"
-
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
 type file struct {
@@ -27,44 +25,6 @@ type file struct {
 	branch          string
 	path            string
 	contents        string
-}
-
-func expandFile(d *schema.ResourceData) *file {
-	f := &file{}
-	switch d.Id() {
-	case "":
-		f.repositoryOwner = d.Get(repositoryOwnerAttributeName).(string)
-		f.repositoryName = d.Get(repositoryNameAttributeName).(string)
-		f.branch = d.Get(branchAttributeName).(string)
-		f.path = d.Get(pathAttributeName).(string)
-	default:
-		// Support importing existing files.
-		if rn, ro, b, p, err := parseFileID(d.Id()); err == nil {
-			f.repositoryOwner, f.repositoryName, f.branch, f.path = rn, ro, b, p
-		}
-	}
-	f.contents = d.Get(contentsAttributeName).(string)
-	return f
-}
-
-func flattenFile(f *file, d *schema.ResourceData) error {
-	if err := d.Set(repositoryOwnerAttributeName, f.repositoryOwner); err != nil {
-		return err
-	}
-	if err := d.Set(repositoryNameAttributeName, f.repositoryName); err != nil {
-		return err
-	}
-	if err := d.Set(branchAttributeName, f.branch); err != nil {
-		return err
-	}
-	if err := d.Set(pathAttributeName, f.path); err != nil {
-		return err
-	}
-	if err := d.Set(contentsAttributeName, f.contents); err != nil {
-		return err
-	}
-	d.SetId(fmt.Sprintf("%s/%s:%s:%s", f.repositoryOwner, f.repositoryName, f.branch, f.path))
-	return nil
 }
 
 func parseFileID(v string) (string, string, string, string, error) {
