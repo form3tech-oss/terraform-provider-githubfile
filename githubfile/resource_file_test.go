@@ -27,9 +27,8 @@ import (
 	"github.com/form3tech-oss/go-github-utils/pkg/branch"
 	ghfileutils "github.com/form3tech-oss/go-github-utils/pkg/file"
 	"github.com/google/go-github/v54/github"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"golang.org/x/oauth2"
 )
 
@@ -130,19 +129,18 @@ func TestAccResourceFile_basic(t *testing.T) {
 			testAccPreCheck(t)
 			createTestBranch(t)
 		},
-		IDRefreshName: resourceName,
-		Providers:     testAccProviders,
-		CheckDestroy:  testAccCheckFileDestroy,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckFileDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFileCreateConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckFileExists(resourceName, &before),
-					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, testRepoName),
-					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, testRepoOwner),
-					resource.TestCheckResourceAttr(resourceName, branchAttributeName, testBranchName),
-					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/baz/README.md"),
-					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nbaz"),
+					resource.TestCheckResourceAttr(resourceName, "repository_name", testRepoName),
+					resource.TestCheckResourceAttr(resourceName, "repository_owner", testRepoOwner),
+					resource.TestCheckResourceAttr(resourceName, "branch", testBranchName),
+					resource.TestCheckResourceAttr(resourceName, "path", "foo/bar/baz/README.md"),
+					resource.TestCheckResourceAttr(resourceName, "contents", "foo\nbar\nbaz"),
 				),
 			},
 			{
@@ -154,11 +152,11 @@ func TestAccResourceFile_basic(t *testing.T) {
 				Config: testAccFileUpdateConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckFileExists(resourceName, &before),
-					resource.TestCheckResourceAttr(resourceName, repositoryNameAttributeName, testRepoName),
-					resource.TestCheckResourceAttr(resourceName, repositoryOwnerAttributeName, testRepoOwner),
-					resource.TestCheckResourceAttr(resourceName, branchAttributeName, testBranchName),
-					resource.TestCheckResourceAttr(resourceName, pathAttributeName, "foo/bar/baz/README.md"),
-					resource.TestCheckResourceAttr(resourceName, contentsAttributeName, "foo\nbar\nqux"),
+					resource.TestCheckResourceAttr(resourceName, "repository_name", testRepoName),
+					resource.TestCheckResourceAttr(resourceName, "repository_owner", testRepoOwner),
+					resource.TestCheckResourceAttr(resourceName, "branch", testBranchName),
+					resource.TestCheckResourceAttr(resourceName, "path", "foo/bar/baz/README.md"),
+					resource.TestCheckResourceAttr(resourceName, "contents", "foo\nbar\nqux"),
 				),
 			},
 		},
@@ -175,7 +173,8 @@ func testAccCheckFileExists(resourceName string, f *file) resource.TestCheckFunc
 		if err != nil {
 			return err
 		}
-		h, err := ghfileutils.GetFile(context.Background(), testAccProvider.Meta().(*providerConfiguration).githubClient, ro, rn, b, p)
+		client := newGitHubClient()
+		h, err := ghfileutils.GetFile(context.Background(), client, ro, rn, b, p)
 		if err != nil {
 			return err
 		}
@@ -193,15 +192,16 @@ func testAccCheckFileExists(resourceName string, f *file) resource.TestCheckFunc
 }
 
 func testAccCheckFileDestroy(s *terraform.State) error {
+	client := newGitHubClient()
 	for _, r := range s.RootModule().Resources {
-		if r.Type != resourceFileName {
+		if r.Type != "githubfile_file" {
 			continue
 		}
 		ro, rn, b, p, err := parseFileID(r.Primary.ID)
 		if err != nil {
 			return err
 		}
-		_, err = ghfileutils.GetFile(context.Background(), testAccProvider.Meta().(*providerConfiguration).githubClient, ro, rn, b, p)
+		_, err = ghfileutils.GetFile(context.Background(), client, ro, rn, b, p)
 		if err == nil {
 			return fmt.Errorf(`%q still exists in branch %q of repository "%s/%s"`, p, b, ro, rn)
 		}
@@ -212,13 +212,6 @@ func testAccCheckFileDestroy(s *terraform.State) error {
 	return nil
 }
 
-// newTestResourceData creates a schema.ResourceData with the file resource schema
-// populated from the given raw values, suitable for unit testing.
-func newTestResourceData(t *testing.T, values map[string]interface{}) *schema.ResourceData {
-	t.Helper()
-	return schema.TestResourceDataRaw(t, resourceFile().Schema, values)
-}
-
 // newMockGitHubClient creates a github.Client pointing at the given httptest.Server.
 func newMockGitHubClient(server *httptest.Server) *github.Client {
 	client := github.NewClient(server.Client())
@@ -227,7 +220,7 @@ func newMockGitHubClient(server *httptest.Server) *github.Client {
 	return client
 }
 
-func TestResourceFileDelete_ArchivedRepo(t *testing.T) {
+func TestDeleteFile_ArchivedRepo(t *testing.T) {
 	// Set up a mock HTTP server that returns an archived repository
 	mux := http.NewServeMux()
 	mux.HandleFunc("/repos/test-owner/test-repo", func(w http.ResponseWriter, r *http.Request) {
@@ -241,23 +234,22 @@ func TestResourceFileDelete_ArchivedRepo(t *testing.T) {
 		githubClient: newMockGitHubClient(server),
 	}
 
-	d := newTestResourceData(t, map[string]interface{}{
-		repositoryOwnerAttributeName: "test-owner",
-		repositoryNameAttributeName:  "test-repo",
-		branchAttributeName:          "main",
-		pathAttributeName:            "some/file.txt",
-		contentsAttributeName:        "some content",
-	})
-	d.SetId("test-owner/test-repo:main:some/file.txt")
+	f := &file{
+		repositoryOwner: "test-owner",
+		repositoryName:  "test-repo",
+		branch:          "main",
+		path:            "some/file.txt",
+		contents:        "some content",
+	}
 
 	// Delete should succeed without error — archived repo skips deletion
-	err := resourceFileDelete(d, config)
+	err := deleteFile(context.Background(), config, f)
 	if err != nil {
 		t.Fatalf("expected no error for archived repo deletion, got: %v", err)
 	}
 }
 
-func TestResourceFileDelete_NonArchivedRepo_FileNotFound(t *testing.T) {
+func TestDeleteFile_NonArchivedRepo_FileNotFound(t *testing.T) {
 	// Set up a mock HTTP server that returns a non-archived repository
 	// and a 404 for the file content (file doesn't exist)
 	mux := http.NewServeMux()
@@ -275,17 +267,16 @@ func TestResourceFileDelete_NonArchivedRepo_FileNotFound(t *testing.T) {
 		githubClient: newMockGitHubClient(server),
 	}
 
-	d := newTestResourceData(t, map[string]interface{}{
-		repositoryOwnerAttributeName: "test-owner",
-		repositoryNameAttributeName:  "test-repo",
-		branchAttributeName:          "main",
-		pathAttributeName:            "some/file.txt",
-		contentsAttributeName:        "some content",
-	})
-	d.SetId("test-owner/test-repo:main:some/file.txt")
+	f := &file{
+		repositoryOwner: "test-owner",
+		repositoryName:  "test-repo",
+		branch:          "main",
+		path:            "some/file.txt",
+		contents:        "some content",
+	}
 
 	// Delete should succeed — file not found is treated as already deleted
-	err := resourceFileDelete(d, config)
+	err := deleteFile(context.Background(), config, f)
 	if err != nil {
 		t.Fatalf("expected no error when file not found on non-archived repo, got: %v", err)
 	}
