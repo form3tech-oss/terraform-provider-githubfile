@@ -1,23 +1,23 @@
+version: 2
 archives:
-- format: zip
+  - formats:
+      - zip
 builds:
-- binary: terraform-provider-githubfile_v{{.Version}}
-  env:
-  - CGO_ENABLED=0
-  goarch:
-  - amd64
-  - arm64
-  goos:
-  - darwin
-  - linux
-  - windows
-  # ignore unsupported GOOS/GOARCH pair windows/arm64
-  # https://goreleaser.com/deprecations/#builds-for-windowsarm64
-  ignore:
-  - goos: windows
-    goarch: arm64
+  - binary: terraform-provider-githubfile_v{{.Version}}
+    env:
+      - CGO_ENABLED=0
+    goarch:
+      - amd64
+      - arm64
+    goos:
+      - darwin
+      - linux
+      - windows
+    ignore:
+      - goos: windows
+        goarch: arm64
 changelog:
   filters:
     exclude:
-    - "^Merge pull request"
-    - "^Merge branch"
+      - "^Merge pull request"
+      - "^Merge branch"
