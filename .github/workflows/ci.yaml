@@ -21,6 +21,7 @@ concurrency:
 
 env:
   TF_ACC: 1
+  TERRAFORM_VERSION: "1.11.1"
   COMMIT_MESSAGE_PREFIX: "[skip ci]"
   GITHUB_TOKEN: ${{ github.token }}
   GITHUB_USERNAME: "github-actions[bot]"
@@ -38,6 +39,22 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+          
+      - name: Set up Terraform
+        run: |
+          set -euo pipefail
+          base="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}"
+          zip="terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+
+          curl -sSfL "${base}/${zip}" -o "${zip}"
+          curl -sSfL "${base}/terraform_${TERRAFORM_VERSION}_SHA256SUMS" -o SHA256SUMS
+
+          grep " ${zip}\$" SHA256SUMS | sha256sum --check --status
+
+          sudo unzip -o -q "${zip}" terraform -d /usr/local/bin
+          rm -f "${zip}" SHA256SUMS
+
+          terraform version
 
       - name: Tests
         run: |

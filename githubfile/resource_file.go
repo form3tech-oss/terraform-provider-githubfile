@@ -238,20 +238,22 @@ func createOrUpdateFile(ctx context.Context, c *providerConfiguration, f *file, 
 			Type:    github.String("blob"),
 		},
 	}
-	if err := commit.CreateCommit(ctx, c.githubClient, &commit.CommitOptions{
-		RepoOwner:                   f.repositoryOwner,
-		RepoName:                    f.repositoryName,
-		Branch:                      f.branch,
-		CommitMessage:               formatCommitMessage(c.commitMessagePrefix, s, f.path),
-		GpgPassphrase:               c.gpgPassphrase,
-		GpgPrivateKey:               c.gpgSecretKey,
-		Username:                    c.githubUsername,
-		Email:                       c.githubEmail,
-		Changes:                     entries,
-		PullRequestSourceBranchName: fmt.Sprintf("terraform-provider-githubfile-%d", time.Now().UnixNano()),
-		PullRequestBody:             "",
-		MaxRetries:                  3,
-		RetryBackoff:                5 * time.Second,
+	if err := withWriteLimits(ctx, c, f, func() error {
+		return createCommit(ctx, c, &commit.CommitOptions{
+			RepoOwner:                   f.repositoryOwner,
+			RepoName:                    f.repositoryName,
+			Branch:                      f.branch,
+			CommitMessage:               formatCommitMessage(c.commitMessagePrefix, s, f.path),
+			GpgPassphrase:               c.gpgPassphrase,
+			GpgPrivateKey:               c.gpgSecretKey,
+			Username:                    c.githubUsername,
+			Email:                       c.githubEmail,
+			Changes:                     entries,
+			PullRequestSourceBranchName: fmt.Sprintf("terraform-provider-githubfile-%d", time.Now().UnixNano()),
+			PullRequestBody:             "",
+			MaxRetries:                  c.retry.maxRetries,
+			RetryBackoff:                c.retry.retryWaitMin,
+		})
 	}); err != nil {
 		return fmt.Errorf("failed to create commit: %v", err)
 	}
@@ -307,40 +309,43 @@ func deleteFile(ctx context.Context, c *providerConfiguration, f *file) error {
 		return err
 	}
 
-	// Get the tree that corresponds to the target branch.
-	s, err := branch.GetSHAForBranch(ctx,
-		c.githubClient,
-		f.repositoryOwner,
-		f.repositoryName,
-		f.branch)
-	if err != nil {
-		return err
-	}
+	// The branch is read and the deletion committed under the same lock: reading
+	// the tree outside it would let another writer move the branch in between,
+	// and the override built from that read would then rebuild the old tree.
+	if err := withWriteLimits(ctx, c, f, func() error {
+		s, err := branch.GetSHAForBranch(ctx,
+			c.githubClient,
+			f.repositoryOwner,
+			f.repositoryName,
+			f.branch)
+		if err != nil {
+			return err
+		}
 
-	newTree := []*github.TreeEntry{{
-		SHA:  nil, // delete the file
-		Path: fileContent.Path,
-		Mode: github.String("100644"),
-		Type: github.String("blob"),
-	}}
-	// Create a commit based on the new tree.
-	if err := commit.CreateCommit(ctx, c.githubClient, &commit.CommitOptions{
-		RepoOwner:                   f.repositoryOwner,
-		RepoName:                    f.repositoryName,
-		Branch:                      f.branch,
-		CommitMessage:               formatCommitMessage(c.commitMessagePrefix, "Delete %q.", f.path),
-		GpgPassphrase:               c.gpgPassphrase,
-		GpgPrivateKey:               c.gpgSecretKey,
-		Username:                    c.githubUsername,
-		Email:                       c.githubEmail,
-		Changes:                     newTree,
-		BaseTreeOverride:            &s,
-		PullRequestSourceBranchName: fmt.Sprintf("terraform-provider-githubfile-%d", time.Now().UnixNano()),
-		PullRequestBody:             "",
-		MaxRetries:                  3,
-		RetryBackoff:                5 * time.Second,
-	},
-	); err != nil {
+		newTree := []*github.TreeEntry{{
+			SHA:  nil, // delete the file
+			Path: fileContent.Path,
+			Mode: github.String("100644"),
+			Type: github.String("blob"),
+		}}
+		// Create a commit based on the new tree.
+		return createCommit(ctx, c, &commit.CommitOptions{
+			RepoOwner:                   f.repositoryOwner,
+			RepoName:                    f.repositoryName,
+			Branch:                      f.branch,
+			CommitMessage:               formatCommitMessage(c.commitMessagePrefix, "Delete %q.", f.path),
+			GpgPassphrase:               c.gpgPassphrase,
+			GpgPrivateKey:               c.gpgSecretKey,
+			Username:                    c.githubUsername,
+			Email:                       c.githubEmail,
+			Changes:                     newTree,
+			BaseTreeOverride:            &s,
+			PullRequestSourceBranchName: fmt.Sprintf("terraform-provider-githubfile-%d", time.Now().UnixNano()),
+			PullRequestBody:             "",
+			MaxRetries:                  c.retry.maxRetries,
+			RetryBackoff:                c.retry.retryWaitMin,
+		})
+	}); err != nil {
 		return fmt.Errorf("failed to create commit: %v", err)
 	}
 	return nil
