@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/base64"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/google/go-github/v54/github"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -31,23 +33,32 @@ import (
 var _ provider.Provider = &githubfileProvider{}
 
 type providerConfiguration struct {
+	branchLocks         *branchLocks
 	commitMessagePrefix string
+	directCommit        bool
 	githubClient        *github.Client
 	githubEmail         string
 	githubUsername      string
 	gpgPassphrase       string
 	gpgSecretKey        string
+	retry               retryConfig
+	writeSlots          semaphore
 }
 
 type githubfileProvider struct{}
 
 type githubfileProviderModel struct {
 	CommitMessagePrefix types.String `tfsdk:"commit_message_prefix"`
+	DirectCommit        types.Bool   `tfsdk:"direct_commit"`
 	GithubEmail         types.String `tfsdk:"github_email"`
 	GithubToken         types.String `tfsdk:"github_token"`
 	GithubUsername      types.String `tfsdk:"github_username"`
 	GpgPassphrase       types.String `tfsdk:"gpg_passphrase"`
 	GpgSecretKey        types.String `tfsdk:"gpg_secret_key"`
+	MaxConcurrency      types.Int64  `tfsdk:"max_concurrency"`
+	MaxRetries          types.Int64  `tfsdk:"max_retries"`
+	RetryWaitMaxSeconds types.Int64  `tfsdk:"retry_wait_max_seconds"`
+	RetryWaitMinSeconds types.Int64  `tfsdk:"retry_wait_min_seconds"`
 }
 
 // New returns a new instance of the githubfile provider.
@@ -65,6 +76,10 @@ func (p *githubfileProvider) Schema(_ context.Context, _ provider.SchemaRequest,
 			"commit_message_prefix": schema.StringAttribute{
 				Optional:    true,
 				Description: "An optional prefix to be added to all commits created as a result of manipulating files. Can also be set via the COMMIT_MESSAGE_PREFIX environment variable.",
+			},
+			"direct_commit": schema.BoolAttribute{
+				Optional:    true,
+				Description: "Write files by committing straight to the target branch, rather than by opening a pull request and merging it. Four API calls per file instead of eight, and a collision with another writer is retried by rebuilding on the new branch tip rather than failing. Requires an identity that can push to the target branch, which on a protected branch means one that bypasses protection for direct pushes and not only for pull requests. Defaults to false. Can also be set via the DIRECT_COMMIT environment variable.",
 			},
 			"github_email": schema.StringAttribute{
 				Optional:    true,
@@ -90,6 +105,22 @@ func (p *githubfileProvider) Schema(_ context.Context, _ provider.SchemaRequest,
 				Optional:    true,
 				Sensitive:   true,
 				Description: "The GPG secret key to be use for commit signing. Can also be set via the GPG_SECRET_KEY environment variable.",
+			},
+			"max_concurrency": schema.Int64Attribute{
+				Optional:    true,
+				Description: "How many file writes this provider may have in flight at once. A write is four API calls on the direct route and eight on the pull request route, so Terraform's default parallelism of ten can leave eighty requests outstanding against an hourly allowance shared with every other workspace. Unlike Terraform's own -parallelism this caps only this provider, leaving the rest of the graph alone. Reads are not counted. Defaults to 0, meaning no limit. Can also be set via the MAX_CONCURRENCY environment variable.",
+			},
+			"max_retries": schema.Int64Attribute{
+				Optional:    true,
+				Description: "How many times to retry a request GitHub has asked us to come back for - a rate limit, a 429, or a server error. Defaults to 5. Can also be set via the MAX_RETRIES environment variable.",
+			},
+			"retry_wait_min_seconds": schema.Int64Attribute{
+				Optional:    true,
+				Description: "Shortest wait between retries, in seconds. Defaults to 1. Can also be set via the RETRY_WAIT_MIN_SECONDS environment variable.",
+			},
+			"retry_wait_max_seconds": schema.Int64Attribute{
+				Optional:    true,
+				Description: "Longest wait between retries, in seconds. Defaults to 60. This is the ceiling on waiting out a rate limit: a primary limit can reset up to an hour away, and waiting that out inside an apply may outlast the run itself, so past this the request is failed and reported rather than slept on. Raise it to trade a longer apply for fewer failed ones. Can also be set via the RETRY_WAIT_MAX_SECONDS environment variable.",
 			},
 		},
 	}
@@ -129,9 +160,14 @@ func (p *githubfileProvider) Configure(ctx context.Context, req provider.Configu
 		return
 	}
 
+	retry := retryConfig{
+		maxRetries:   int(int64ValueOrEnv(config.MaxRetries, "MAX_RETRIES", defaultMaxRetries)),
+		retryWaitMin: time.Duration(int64ValueOrEnv(config.RetryWaitMinSeconds, "RETRY_WAIT_MIN_SECONDS", int64(defaultRetryWaitMin/time.Second))) * time.Second,
+		retryWaitMax: time.Duration(int64ValueOrEnv(config.RetryWaitMaxSeconds, "RETRY_WAIT_MAX_SECONDS", int64(defaultRetryWaitMax/time.Second))) * time.Second,
+	}
+
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	tc := oauth2.NewClient(ctx, ts)
-	gc := github.NewClient(tc)
+	gc := github.NewClient(newRetryableClient(&oauth2.Transport{Source: ts}, retry))
 
 	sk := stringValueOrEnv(config.GpgSecretKey, "GPG_SECRET_KEY")
 	if v, err := base64.StdEncoding.DecodeString(sk); err == nil {
@@ -139,12 +175,16 @@ func (p *githubfileProvider) Configure(ctx context.Context, req provider.Configu
 	}
 
 	providerConfig := &providerConfiguration{
+		branchLocks:         newBranchLocks(),
 		commitMessagePrefix: stringValueOrEnv(config.CommitMessagePrefix, "COMMIT_MESSAGE_PREFIX"),
+		directCommit:        boolValueOrEnv(config.DirectCommit, "DIRECT_COMMIT"),
 		githubClient:        gc,
 		githubEmail:         email,
 		githubUsername:      username,
 		gpgSecretKey:        sk,
 		gpgPassphrase:       stringValueOrEnv(config.GpgPassphrase, "GPG_PASSPHRASE"),
+		retry:               retry,
+		writeSlots:          newSemaphore(int(int64ValueOrEnv(config.MaxConcurrency, "MAX_CONCURRENCY", 0))),
 	}
 
 	resp.DataSourceData = providerConfig
@@ -166,4 +206,26 @@ func stringValueOrEnv(v types.String, envKey string) string {
 		return v.ValueString()
 	}
 	return os.Getenv(envKey)
+}
+
+func int64ValueOrEnv(v types.Int64, envKey string, fallback int64) int64 {
+	if !v.IsNull() && !v.IsUnknown() {
+		return v.ValueInt64()
+	}
+	n, err := strconv.ParseInt(os.Getenv(envKey), 10, 64)
+	if err != nil || n < 0 {
+		return fallback
+	}
+	return n
+}
+
+func boolValueOrEnv(v types.Bool, envKey string) bool {
+	if !v.IsNull() && !v.IsUnknown() {
+		return v.ValueBool()
+	}
+	b, err := strconv.ParseBool(os.Getenv(envKey))
+	if err != nil {
+		return false
+	}
+	return b
 }
